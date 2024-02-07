@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @Getter
@@ -19,4 +21,5 @@ public class EmailDTO {
     private String mensaje;
     @NotNull(message = "Se debe enviar los receptores")
     private List<String> receptores;
+    private List<MultipartFile> adjuntos;
 }

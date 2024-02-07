@@ -10,11 +10,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @Service("mailSenderCustom")
 public class EmailServiceImpl implements EmailService {
@@ -61,14 +66,48 @@ public class EmailServiceImpl implements EmailService {
     public ResponseDTO sendEmailWithSimpleHtml(EmailDTO emailDTO) throws MessagingException {
         MimeMessage mensaje = javaMailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(mensaje,true, "UTF-8");
-        String plantilla = utilEmail.getPlantilla(emailDTO.getMensaje());
+        String plantilla = utilEmail.getPlantillaFromHtml(emailDTO.getMensaje());
         log.info("[Ini][Generando Email con html en string]");
+
         helper.setSubject(emailDTO.getAsunto());
+
+
+
+        for (MultipartFile archivoAdjunto : emailDTO.getAdjuntos()) {
+            int i = 1;
+            ByteArrayResource archivoResource = null;
+
+            try {
+                byte[] contenido = archivoAdjunto.getBytes();
+
+                archivoResource = new ByteArrayResource(contenido);
+
+                String nombreAdjunto = archivoAdjunto.getOriginalFilename();
+
+                if(contenido.length==0)
+                {
+                    log.info("Adjunto "+ nombreAdjunto + " contiene 0 bytes, no se enviara archivos vacios" );
+                }
+
+                if (nombreAdjunto != null && !nombreAdjunto.isEmpty()) {
+                    helper.addAttachment(nombreAdjunto, archivoResource);
+                } else {
+                    helper.addAttachment("Adjunto" + i, archivoResource);
+                }
+
+            } catch (Exception e) {
+                log.info("Error procesando adjunto: {}", e.getMessage());
+            }
+        }
+
+
+
         for(String emailTo : emailDTO.getReceptores())
         {
             helper.setTo(emailTo);
             log.info("[Pro][Enviando Email a {} ]", emailTo);
             helper.setText(plantilla, true);
+            helper.addInline("imagen", new ClassPathResource("static/imagenCorreo.png"));
             javaMailSender.send(mensaje);
         }
 
